@@ -10,6 +10,13 @@ import (
 	"strings"
 )
 
+type Kind string
+
+const (
+	Varint  Kind = "varint"
+	UVarint Kind = "uvarint"
+)
+
 type Reader struct {
 	reader *bufio.Reader
 	fields map[string]reflect.Value
@@ -42,9 +49,9 @@ func (r *Reader) read(v reflect.Value, t *Tag, prefix string) error {
 	}
 
 	switch t.Name() {
-	case "varint":
+	case Varint:
 		return r.readVarint(v, t, prefix)
-	case "uvarint":
+	case UVarint:
 		return r.readUVarint(v, t, prefix)
 	}
 
@@ -125,9 +132,11 @@ func (r *Reader) readString(v reflect.Value, t *Tag, prefix string) error {
 }
 
 func (r *Reader) readArray(v reflect.Value, _ *Tag, prefix string) error {
+	fmt.Println("len", v.Len())
 	for i := 0; i < v.Len(); i++ {
 		// TODO: Not used
 		name := fmt.Sprintf("%s[%d]", prefix, i)
+		fmt.Println(">", name)
 		if err := r.read(v.Index(i), nil, name); err != nil {
 			return err
 		}

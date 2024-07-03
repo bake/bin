@@ -27,11 +27,11 @@ func parseTags(st reflect.StructTag) (*Tag, error) {
 	return &Tag{tag: t}, nil
 }
 
-func (t *Tag) Name() string {
+func (t *Tag) Name() Kind {
 	if t == nil || t.tag == nil {
 		return ""
 	}
-	return t.tag.Name
+	return Kind(t.tag.Name)
 }
 
 func (t *Tag) Option(key string) (string, bool) {
