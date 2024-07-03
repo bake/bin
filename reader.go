@@ -1,6 +1,8 @@
 package bin
 
 import (
+	"bufio"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"reflect"
@@ -9,13 +11,13 @@ import (
 )
 
 type Reader struct {
-	reader io.Reader
+	reader *bufio.Reader
 	fields map[string]reflect.Value
 }
 
 func NewReader(r io.Reader) *Reader {
 	return &Reader{
-		reader: r,
+		reader: bufio.NewReader(r),
 		fields: map[string]reflect.Value{},
 	}
 }
@@ -39,6 +41,13 @@ func (r *Reader) read(v reflect.Value, t *Tag, prefix string) error {
 		v = v.Elem()
 	}
 
+	switch t.tag.Name {
+	case "varint":
+		return r.readVarint(v, t, prefix)
+	case "uvarint":
+		return r.readUVarint(v, t, prefix)
+	}
+
 	switch v.Kind() {
 	case reflect.Struct:
 		return r.readStruct(v, t, prefix)
@@ -53,6 +62,25 @@ func (r *Reader) read(v reflect.Value, t *Tag, prefix string) error {
 	default:
 		return fmt.Errorf("unknown kind %q", v.Kind())
 	}
+}
+
+// TODO: Test varint
+func (r *Reader) readVarint(v reflect.Value, t *Tag, prefix string) error {
+	out, err := binary.ReadVarint(r.reader)
+	if err != nil {
+		return err
+	}
+	v.Set(reflect.ValueOf(out))
+	return nil
+}
+
+func (r *Reader) readUVarint(v reflect.Value, t *Tag, prefix string) error {
+	out, err := binary.ReadUvarint(r.reader)
+	if err != nil {
+		return err
+	}
+	v.Set(reflect.ValueOf(out))
+	return nil
 }
 
 func (r *Reader) readStruct(v reflect.Value, _ *Tag, prefix string) error {

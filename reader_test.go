@@ -239,3 +239,30 @@ func TestReadPrefixedSlice(t *testing.T) {
 		})
 	}
 }
+
+func TestReadVarint(t *testing.T) {
+	type Out struct {
+		Number uint64 `bin:"uvarint"`
+	}
+
+	tt := []struct {
+		in  []byte
+		out Out
+	}{
+		{in: []byte{0x00}, out: Out{Number: 0}},
+		{in: []byte{0x80, 0x08}, out: Out{Number: 1024}},
+		{in: []byte{0xb9, 0x0a}, out: Out{Number: 1337}},
+	}
+
+	for i, tc := range tt {
+		t.Run(fmt.Sprintf("Test%d", i+1), func(t *testing.T) {
+			is := is.New(t)
+			r := bytes.NewReader(tc.in)
+			br := bin.NewReader(r)
+			var out Out
+			err := br.Read(&out)
+			is.NoErr(err)
+			is.Equal(out, tc.out)
+		})
+	}
+}
