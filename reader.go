@@ -41,7 +41,7 @@ func (r *Reader) read(v reflect.Value, t *Tag, prefix string) error {
 		v = v.Elem()
 	}
 
-	switch t.tag.Name {
+	switch t.Name() {
 	case "varint":
 		return r.readVarint(v, t, prefix)
 	case "uvarint":
