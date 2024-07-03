@@ -109,7 +109,7 @@ func TestReadPrefixedString(t *testing.T) {
 
 	tt := []struct {
 		in  []byte
-		out any
+		out Out
 	}{
 		{in: []byte{0x04, 0x72, 0x61, 0x74, 0x73}, out: Out{Size: Number{Value: 4}, Value: "rats"}},
 	}
@@ -143,11 +143,88 @@ func TestReadNestedPrefixedString(t *testing.T) {
 
 	tt := []struct {
 		in  []byte
-		out any
+		out Out
 	}{
 		{in: []byte{0x00}, out: Out{Inner{Size: Number{Value: 0}, Value: ""}}},
 		{in: []byte{0x03, 0x61, 0x62, 0x63}, out: Out{Inner{Size: Number{Value: 3}, Value: "abc"}}},
 		{in: []byte{0x04, 0x72, 0x61, 0x74, 0x73}, out: Out{Inner{Size: Number{Value: 4}, Value: "rats"}}},
+	}
+
+	for i, tc := range tt {
+		t.Run(fmt.Sprintf("Test%d", i+1), func(t *testing.T) {
+			is := is.New(t)
+			r := bytes.NewReader(tc.in)
+			br := bin.NewReader(r)
+			var out Out
+			err := br.Read(&out)
+			is.NoErr(err)
+			is.Equal(out, tc.out)
+		})
+	}
+}
+
+func TestReadArray(t *testing.T) {
+	type Out struct {
+		Numbers [3]uint8
+	}
+
+	tt := []struct {
+		in  []byte
+		out Out
+	}{
+		{in: []byte{0x00, 0x01, 0x02}, out: Out{Numbers: [3]uint8{0, 1, 2}}},
+	}
+
+	for i, tc := range tt {
+		t.Run(fmt.Sprintf("Test%d", i+1), func(t *testing.T) {
+			is := is.New(t)
+			r := bytes.NewReader(tc.in)
+			br := bin.NewReader(r)
+			var out Out
+			err := br.Read(&out)
+			is.NoErr(err)
+			is.Equal(out, tc.out)
+		})
+	}
+}
+
+func TestReadSlice(t *testing.T) {
+	type Out struct {
+		Numbers []uint8 `bin:",size=4"`
+	}
+
+	tt := []struct {
+		in  []byte
+		out Out
+	}{
+		{in: []byte{0x00, 0x01, 0x02, 0x3}, out: Out{Numbers: []uint8{0, 1, 2, 3}}},
+	}
+
+	for i, tc := range tt {
+		t.Run(fmt.Sprintf("Test%d", i+1), func(t *testing.T) {
+			is := is.New(t)
+			r := bytes.NewReader(tc.in)
+			br := bin.NewReader(r)
+			var out Out
+			err := br.Read(&out)
+			is.NoErr(err)
+			is.Equal(out, tc.out)
+		})
+	}
+}
+
+func TestReadPrefixedSlice(t *testing.T) {
+	type Out struct {
+		Size    uint8
+		Numbers []uint8 `bin:",size=.Size"`
+	}
+
+	tt := []struct {
+		in  []byte
+		out Out
+	}{
+		{in: []byte{0x00}, out: Out{Size: 0, Numbers: []uint8{}}},
+		{in: []byte{0x01, 0xff}, out: Out{Size: 1, Numbers: []uint8{255}}},
 	}
 
 	for i, tc := range tt {

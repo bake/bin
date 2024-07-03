@@ -28,6 +28,9 @@ func parseTags(st reflect.StructTag) (*Tag, error) {
 }
 
 func (t *Tag) Option(key string) (string, bool) {
+	if t.tag == nil {
+		return "", false
+	}
 	key += "="
 	for _, o := range t.tag.Options {
 		if !strings.HasPrefix(o, key) {

@@ -46,10 +46,13 @@ func (r *Reader) read(v reflect.Value, t *Tag, prefix string) error {
 		return r.readUint8(v, t)
 	case reflect.String:
 		return r.readString(v, t, prefix)
+	case reflect.Array:
+		return r.readArray(v, t, prefix)
+	case reflect.Slice:
+		return r.readSlice(v, t, prefix)
 	default:
-		fmt.Println("unknown kind", v.Kind())
+		return fmt.Errorf("unknown kind %q", v.Kind())
 	}
-	return nil
 }
 
 func (r *Reader) readStruct(v reflect.Value, _ *Tag, prefix string) error {
@@ -93,25 +96,52 @@ func (r *Reader) readString(v reflect.Value, t *Tag, prefix string) error {
 	return nil
 }
 
+func (r *Reader) readArray(v reflect.Value, _ *Tag, prefix string) error {
+	for i := 0; i < v.Len(); i++ {
+		// TODO: Not used
+		name := fmt.Sprintf("%s[%d]", prefix, i)
+		if err := r.read(v.Index(i), nil, name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *Reader) readSlice(v reflect.Value, t *Tag, prefix string) error {
+	size, err := r.size(t, prefix)
+	if err != nil {
+		return err
+	}
+	v.Set(reflect.MakeSlice(v.Type(), size, size))
+	for i := 0; i < v.Len(); i++ {
+		// TODO: Not used
+		name := fmt.Sprintf("%s[%d]", prefix, i)
+		if err := r.read(v.Index(i), nil, name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (r *Reader) size(t *Tag, prefix string) (int, error) {
-	o, ok := t.Option("size")
+	size, ok := t.Option("size")
 	if !ok {
-		return 0, fmt.Errorf("strings require a size option")
+		return 0, fmt.Errorf("size option not found")
 	}
 
-	if size, err := strconv.Atoi(o); err == nil {
+	if size, err := strconv.Atoi(size); err == nil {
 		return size, nil
 	}
 
 	// Add the current fields prefix.
-	o = prefix[:strings.LastIndex(prefix, ".")] + o
+	size = prefix[:strings.LastIndex(prefix, ".")] + size
 
-	if field, ok := r.fields[o]; ok {
+	if field, ok := r.fields[size]; ok {
 		switch k := field.Kind(); k {
 		case reflect.Uint8:
 			return int(field.Uint()), nil
 		default:
-			return 0, fmt.Errorf("unknown field kind %q for %q", k, o)
+			return 0, fmt.Errorf("unknown field kind %q for %q", k, size)
 		}
 	}
 
