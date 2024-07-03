@@ -254,7 +254,7 @@ func TestReadPrefixedSliceStruct(t *testing.T) {
 		in  []byte
 		out Out
 	}{
-		{in: []byte{0x00}, out: Out{Size: 0, Numbers: []Number{{Value: 0}}}},
+		{in: []byte{0x00}, out: Out{Size: 0, Numbers: []Number{}}},
 		{in: []byte{0x01, 0xff}, out: Out{Size: 1, Numbers: []Number{{Value: 255}}}},
 	}
 
