@@ -2,6 +2,7 @@ package bin
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -99,6 +100,14 @@ func (r *Reader) read(v reflect.Value, t *Tag, prefix string) error {
 		return r.readUint32(v, t)
 	case reflect.Uint64:
 		return r.readUint64(v, t)
+	case reflect.Int8:
+		return r.readInt8(v, t)
+	case reflect.Int16:
+		return r.readInt16(v, t)
+	case reflect.Int32:
+		return r.readInt32(v, t)
+	case reflect.Int64:
+		return r.readInt64(v, t)
 	case reflect.Float32:
 		return r.readFloat32(v, t)
 	case reflect.Float64:
@@ -138,8 +147,6 @@ func (r *Reader) readStruct(v reflect.Value, t *Tag, prefix string) error {
 		lr := NewReader(io.LimitReader(r.reader, int64(size)))
 		return lr.read(v, nil, prefix)
 	}
-
-	fmt.Printf(prefix)
 
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
@@ -192,6 +199,58 @@ func (r *Reader) readUint64(v reflect.Value, _ *Tag) error {
 	}
 	val := binary.LittleEndian.Uint64(buf)
 	v.Set(reflect.ValueOf(val))
+	return nil
+}
+
+func (r *Reader) readInt8(v reflect.Value, _ *Tag) error {
+	buf := make([]byte, 1)
+	if _, err := r.reader.Read(buf); err != nil {
+		return err
+	}
+	var n int8
+	if err := binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &n); err != nil {
+		return err
+	}
+	v.Set(reflect.ValueOf(n))
+	return nil
+}
+
+func (r *Reader) readInt16(v reflect.Value, _ *Tag) error {
+	buf := make([]byte, 4)
+	if _, err := r.reader.Read(buf); err != nil {
+		return err
+	}
+	var n int16
+	if err := binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &n); err != nil {
+		return err
+	}
+	v.Set(reflect.ValueOf(n))
+	return nil
+}
+
+func (r *Reader) readInt32(v reflect.Value, _ *Tag) error {
+	buf := make([]byte, 4)
+	if _, err := r.reader.Read(buf); err != nil {
+		return err
+	}
+	var n int32
+	if err := binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &n); err != nil {
+		return err
+	}
+	v.Set(reflect.ValueOf(n))
+	return nil
+}
+
+func (r *Reader) readInt64(v reflect.Value, _ *Tag) error {
+	buf := make([]byte, 8)
+	if _, err := r.reader.Read(buf); err != nil {
+		return err
+	}
+	var n int64
+	if err := binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &n); err != nil {
+		return err
+	}
+	v.Set(reflect.ValueOf(n))
 	return nil
 }
 
@@ -248,7 +307,6 @@ func (r *Reader) readSlice(v reflect.Value, t *Tag, prefix string) error {
 	if err != nil {
 		return err
 	}
-	// fmt.Println(prefix, size, eof)
 	slice := reflect.MakeSlice(v.Type(), 0, size)
 	for i := 0; i < size || eof; i++ {
 		val := reflect.New(v.Type().Elem()).Elem()
