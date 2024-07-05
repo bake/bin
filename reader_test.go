@@ -213,6 +213,33 @@ func TestReadSlice(t *testing.T) {
 	}
 }
 
+func TestReadSliceEOF(t *testing.T) {
+	type Out struct {
+		Numbers []uint8 `bin:",size=EOF"`
+	}
+
+	tt := []struct {
+		in  []byte
+		out Out
+	}{
+		{in: []byte{}, out: Out{Numbers: []uint8{}}},
+		{in: []byte{0x00, 0x01}, out: Out{Numbers: []uint8{0, 1}}},
+		{in: []byte{0x00, 0x01, 0x02, 0x3}, out: Out{Numbers: []uint8{0, 1, 2, 3}}},
+	}
+
+	for i, tc := range tt {
+		t.Run(fmt.Sprintf("Test%d", i+1), func(t *testing.T) {
+			is := is.New(t)
+			r := bytes.NewReader(tc.in)
+			br := bin.NewReader(r)
+			var out Out
+			err := br.Read(&out)
+			is.NoErr(err)
+			is.Equal(out, tc.out)
+		})
+	}
+}
+
 func TestReadPrefixedSlice(t *testing.T) {
 	type Out struct {
 		Size    uint8
