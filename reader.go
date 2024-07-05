@@ -38,11 +38,7 @@ func NewReader(r io.Reader) *Reader {
 }
 
 func (r *Reader) Read(data any) error {
-	t, err := parseTags(`bin:","`)
-	if err != nil {
-		return err
-	}
-	if err := r.read(reflect.ValueOf(data), t, ""); err != nil {
+	if err := r.read(reflect.ValueOf(data), nil, ""); err != nil {
 		return err
 	}
 	return nil
