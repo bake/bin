@@ -2,8 +2,6 @@
 
 A Go reader for binary files. **This is work in progress.** It is not "complete" and may never be.
 
----
-
 ## Features
 
 - Parse arrays and slices with arbitrary length. Read until EOF, a number that is known at build time or based on a previous struct field.
