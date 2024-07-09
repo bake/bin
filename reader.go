@@ -38,10 +38,7 @@ func NewReader(r io.Reader) *Reader {
 }
 
 func (r *Reader) Read(data any) error {
-	if err := r.read(reflect.ValueOf(data), nil, ""); err != nil {
-		return err
-	}
-	return nil
+	return r.read(reflect.ValueOf(data), nil, "")
 }
 
 func (r *Reader) read(v reflect.Value, t *Tag, prefix string) error {
@@ -80,9 +77,9 @@ func (r *Reader) read(v reflect.Value, t *Tag, prefix string) error {
 
 	switch t.Name() {
 	case Varint:
-		return r.readVarint(v, t, prefix)
+		return r.readVarint(v)
 	case UVarint:
-		return r.readUVarint(v, t, prefix)
+		return r.readUVarint(v)
 	}
 
 	switch v.Kind() {
@@ -119,8 +116,7 @@ func (r *Reader) read(v reflect.Value, t *Tag, prefix string) error {
 	}
 }
 
-// TODO: Test varint
-func (r *Reader) readVarint(v reflect.Value, t *Tag, prefix string) error {
+func (r *Reader) readVarint(v reflect.Value) error {
 	out, err := binary.ReadVarint(r.reader)
 	if err != nil {
 		return err
@@ -129,7 +125,7 @@ func (r *Reader) readVarint(v reflect.Value, t *Tag, prefix string) error {
 	return nil
 }
 
-func (r *Reader) readUVarint(v reflect.Value, t *Tag, prefix string) error {
+func (r *Reader) readUVarint(v reflect.Value) error {
 	out, err := binary.ReadUvarint(r.reader)
 	if err != nil {
 		return err

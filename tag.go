@@ -47,3 +47,10 @@ func (t *Tag) Option(key string) (string, bool) {
 	}
 	return "", false
 }
+
+func (t *Tag) HasOption(opt string) bool {
+	if t == nil || t.tag == nil {
+		return false
+	}
+	return t.tag.HasOption(opt)
+}
