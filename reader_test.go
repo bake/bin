@@ -3,7 +3,9 @@ package bin_test
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/bake/bin"
@@ -321,6 +323,41 @@ func TestReadVarint(t *testing.T) {
 			var out Out
 			err := br.Read(&out)
 			is.NoErr(err)
+			is.Equal(out, tc.out)
+		})
+	}
+}
+
+type SkippableUint8 uint8
+
+func (v SkippableUint8) Skip(value reflect.Value) bool {
+	return value.Uint() > 0
+}
+
+func TestReadSkipper(t *testing.T) {
+	type Out struct {
+		A uint8
+		B SkippableUint8 `bin:",skip=.A"`
+	}
+
+	tt := []struct {
+		in  []byte
+		out Out
+		err error
+	}{
+		{in: []byte{0x01}, out: Out{A: 1, B: 0}, err: nil},
+		{in: []byte{0x00}, out: Out{}, err: io.EOF},
+		{in: []byte{0x17, 0x17}, out: Out{A: 23, B: 0}},
+	}
+
+	for i, tc := range tt {
+		t.Run(fmt.Sprintf("Test%d", i+1), func(t *testing.T) {
+			is := is.New(t)
+			r := bytes.NewReader(tc.in)
+			br := bin.NewReader(r)
+			var out Out
+			err := br.Read(&out)
+			is.Equal(err, tc.err)
 			is.Equal(out, tc.out)
 		})
 	}

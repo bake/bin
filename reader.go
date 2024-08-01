@@ -22,7 +22,11 @@ const (
 )
 
 type Skipper interface {
-	SkipBinary(reflect.Value) bool
+	Skip(value reflect.Value) bool
+}
+
+type Sizer interface {
+	Size(value reflect.Value) int
 }
 
 type Reader struct {
@@ -59,20 +63,13 @@ func (r *Reader) read(v reflect.Value, t *Tag, prefix string) error {
 		}
 	}
 
-	skipper := reflect.TypeOf((*Skipper)(nil)).Elem()
-	if v.Type().Implements(skipper) {
-		field, ok := t.Option("skipper")
-		if !ok {
-			return fmt.Errorf("skipper option not found")
-		}
-		field = prefix[:strings.LastIndex(prefix, ".")] + field
-		w, ok := r.fields[field]
-		if !ok {
-			return fmt.Errorf("could not find field %s", field)
-		}
-		if v.Interface().(Skipper).SkipBinary(w) {
-			return nil
-		}
+	// TODO: Implementation differs from if.
+	skip, err := r.skip(v, t, prefix)
+	if err != nil {
+		return err
+	}
+	if skip {
+		return nil
 	}
 
 	switch t.Name() {
@@ -121,7 +118,7 @@ func (r *Reader) readVarint(v reflect.Value) error {
 	if err != nil {
 		return err
 	}
-	v.Set(reflect.ValueOf(out))
+	v.Set(reflect.ValueOf(out).Convert(v.Type()))
 	return nil
 }
 
@@ -130,7 +127,7 @@ func (r *Reader) readUVarint(v reflect.Value) error {
 	if err != nil {
 		return err
 	}
-	v.Set(reflect.ValueOf(out))
+	v.Set(reflect.ValueOf(out).Convert(v.Type()))
 	return nil
 }
 
@@ -160,7 +157,7 @@ func (r *Reader) readUint8(v reflect.Value, _ *Tag) error {
 	if _, err := r.reader.Read(buf); err != nil {
 		return err
 	}
-	v.Set(reflect.ValueOf(uint8(buf[0])))
+	v.Set(reflect.ValueOf(uint8(buf[0])).Convert(v.Type()))
 	return nil
 }
 
@@ -170,7 +167,7 @@ func (r *Reader) readUint16(v reflect.Value, _ *Tag) error {
 		return err
 	}
 	val := binary.LittleEndian.Uint16(buf)
-	v.Set(reflect.ValueOf(val))
+	v.Set(reflect.ValueOf(val).Convert(v.Type()))
 	return nil
 }
 
@@ -180,7 +177,7 @@ func (r *Reader) readUint32(v reflect.Value, _ *Tag) error {
 		return err
 	}
 	val := binary.LittleEndian.Uint32(buf)
-	v.Set(reflect.ValueOf(val))
+	v.Set(reflect.ValueOf(val).Convert(v.Type()))
 	return nil
 }
 
@@ -190,7 +187,7 @@ func (r *Reader) readUint64(v reflect.Value, _ *Tag) error {
 		return err
 	}
 	val := binary.LittleEndian.Uint64(buf)
-	v.Set(reflect.ValueOf(val))
+	v.Set(reflect.ValueOf(val).Convert(v.Type()))
 	return nil
 }
 
@@ -203,7 +200,7 @@ func (r *Reader) readInt8(v reflect.Value, _ *Tag) error {
 	if err := binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &n); err != nil {
 		return err
 	}
-	v.Set(reflect.ValueOf(n))
+	v.Set(reflect.ValueOf(n).Convert(v.Type()))
 	return nil
 }
 
@@ -216,7 +213,7 @@ func (r *Reader) readInt16(v reflect.Value, _ *Tag) error {
 	if err := binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &n); err != nil {
 		return err
 	}
-	v.Set(reflect.ValueOf(n))
+	v.Set(reflect.ValueOf(n).Convert(v.Type()))
 	return nil
 }
 
@@ -229,7 +226,7 @@ func (r *Reader) readInt32(v reflect.Value, _ *Tag) error {
 	if err := binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &n); err != nil {
 		return err
 	}
-	v.Set(reflect.ValueOf(n))
+	v.Set(reflect.ValueOf(n).Convert(v.Type()))
 	return nil
 }
 
@@ -242,7 +239,7 @@ func (r *Reader) readInt64(v reflect.Value, _ *Tag) error {
 	if err := binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &n); err != nil {
 		return err
 	}
-	v.Set(reflect.ValueOf(n))
+	v.Set(reflect.ValueOf(n).Convert(v.Type()))
 	return nil
 }
 
@@ -253,7 +250,7 @@ func (r *Reader) readFloat32(v reflect.Value, _ *Tag) error {
 	}
 	bits := binary.LittleEndian.Uint32(buf)
 	val := math.Float32frombits(bits)
-	v.Set(reflect.ValueOf(val))
+	v.Set(reflect.ValueOf(val).Convert(v.Type()))
 	return nil
 }
 
@@ -264,7 +261,7 @@ func (r *Reader) readFloat64(v reflect.Value, _ *Tag) error {
 	}
 	bits := binary.LittleEndian.Uint64(buf)
 	val := math.Float64frombits(bits)
-	v.Set(reflect.ValueOf(val))
+	v.Set(reflect.ValueOf(val).Convert(v.Type()))
 	return nil
 }
 
@@ -280,7 +277,7 @@ func (r *Reader) readString(v reflect.Value, t *Tag, prefix string) error {
 	if _, err := r.reader.Read(buf); err != nil {
 		return err
 	}
-	v.Set(reflect.ValueOf(string(buf)))
+	v.Set(reflect.ValueOf(string(buf)).Convert(v.Type()))
 	return nil
 }
 
@@ -314,6 +311,26 @@ func (r *Reader) readSlice(v reflect.Value, t *Tag, prefix string) error {
 	}
 	v.Set(slice)
 	return nil
+}
+
+func (r *Reader) skip(v reflect.Value, t *Tag, prefix string) (bool, error) {
+	field, ok := t.Option("skip")
+	if !ok {
+		return false, nil
+	}
+	skipper := reflect.TypeOf((*Skipper)(nil)).Elem()
+	if !v.Type().Implements(skipper) {
+		return false, fmt.Errorf("%q does not implement the Skipper interface", v.Type())
+	}
+	field = prefix[:strings.LastIndex(prefix, ".")] + field
+	w, ok := r.fields[field]
+	if !ok {
+		return false, fmt.Errorf("could not find field %s", field)
+	}
+	if v.Interface().(Skipper).Skip(w) {
+		return true, nil
+	}
+	return false, nil
 }
 
 func (r *Reader) size(t *Tag, prefix string) (int, bool, error) {
