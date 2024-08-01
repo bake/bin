@@ -53,16 +53,6 @@ func (r *Reader) read(v reflect.Value, t *Tag, prefix string) error {
 		v = v.Elem()
 	}
 
-	if cond, ok := t.Option("if"); ok {
-		keep, err := r.cond(cond, prefix)
-		if err != nil {
-			return err
-		}
-		if !keep {
-			return nil
-		}
-	}
-
 	// TODO: Implementation differs from if.
 	skip, err := r.skip(v, t, prefix)
 	if err != nil {
@@ -360,43 +350,4 @@ func (r *Reader) size(t *Tag, prefix string) (int, bool, error) {
 	}
 
 	return 0, false, fmt.Errorf("could not parse size: %q", size)
-}
-
-func (r *Reader) cond(cond, prefix string) (bool, error) {
-	fields := strings.Fields(cond)
-	if len(fields) != 3 {
-		return false, fmt.Errorf("unexpected if syntax: %q", cond)
-	}
-
-	left, ok := r.parseCond(fields[0], prefix)
-	if !ok {
-		return false, fmt.Errorf("could not parse left operant %q", fields[0])
-	}
-
-	right, ok := r.parseCond(fields[2], prefix)
-	if !ok {
-		return false, fmt.Errorf("could not parse right operant %q", fields[2])
-	}
-
-	switch fields[1] {
-	case "==":
-		return left == right, nil
-	case "!=":
-		return left != right, nil
-	}
-
-	return false, nil
-}
-
-func (r *Reader) parseCond(cond, prefix string) (string, bool) {
-	if cond[0] == '\'' && cond[len(cond)-1] == '\'' {
-		return cond[1 : len(cond)-1], true
-	}
-
-	name := prefix[:strings.LastIndex(prefix, ".")] + cond
-	if field, ok := r.fields[name]; ok {
-		return field.String(), true
-	}
-
-	return "", false
 }

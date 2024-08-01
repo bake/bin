@@ -1,6 +1,6 @@
 # bin
 
-A Go reader for binary files. **This is work in progress.** It is not "complete" and may never be.
+A Go reader for binary files. **This is work in progress.** It is not complete and may never be.
 
 ## Features
 
@@ -9,11 +9,11 @@ A Go reader for binary files. **This is work in progress.** It is not "complete"
 
 ## TODO
 
-- Allow to cast `varint`and `uvarint` toany number type.
-- Compare more than just `string`s.
+- Allow specifying a function for `length`.
+- Allow to cast `varint` and `uvarint` to any number type.
 - It is slow. Is shouldn't be.
 - Document available struct tags.
-- Allow for custom unmarshallers.
+- Move `size` logic into functions.
 
 ## Example
 
